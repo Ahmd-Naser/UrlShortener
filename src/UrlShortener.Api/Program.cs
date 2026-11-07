@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using UrlShortener.Application.Services;
 using UrlShortener.Infrastructure.Persistence;
+using UrlShortener.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +11,8 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<IUrlService, UrlService>();
 
 var app = builder.Build();
 
