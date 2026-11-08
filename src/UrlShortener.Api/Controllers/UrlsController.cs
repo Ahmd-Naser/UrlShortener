@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using UrlShortener.Application.Url.Commands.AddUrl;
+using UrlShortener.Application.Url.Queries.GetOriginalUrl;
 
 namespace UrlShortener.Api.Controllers;
 
@@ -19,4 +20,16 @@ public class UrlsController(ISender sender) : ControllerBase
         return Ok(result.Url);
     }
 
+    [HttpGet("{shortCode}")]
+    public async Task<IActionResult> GetOriginalUrlAsync([FromRoute]string shortCode)
+    {
+        // Logic to retrieve the original URL based on the short code
+        // For example, you might call a service method here
+        var originalUrl = await _sender.Send(new GetOriginalUrlQuery(shortCode));
+        if (originalUrl == null)
+        {
+            return NotFound();
+        }
+        return Ok(originalUrl);
+    }
 }

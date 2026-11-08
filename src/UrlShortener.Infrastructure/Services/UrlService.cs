@@ -1,5 +1,7 @@
-﻿using UrlShortener.Application.Services;
+﻿using Microsoft.EntityFrameworkCore;
+using UrlShortener.Application.Services;
 using UrlShortener.Application.Url.Commands.AddUrl;
+using UrlShortener.Application.Url.Queries.GetOriginalUrl;
 using UrlShortener.Domain.Entities;
 using UrlShortener.Infrastructure.Persistence;
 
@@ -44,5 +46,17 @@ public class UrlService(ApplicationDbContext context) : IUrlService
             codeChars[i] = Alphabet[Random.Shared.Next(Alphabet.Length)];
         }
         return new string(codeChars);
+    }
+
+    public async Task<OriginalUrlResponse> GetOriginalUrl(GetOriginalUrlQuery request, CancellationToken cancellationToken)
+    {
+        var url = await _context.Urls.FirstOrDefaultAsync(u => u.ShortenedCode.Equals(request.ShortenedUrl), cancellationToken);
+
+        if (url == null)
+        {
+            throw new InvalidOperationException("URL not found");
+        }
+
+        return new OriginalUrlResponse(url.OriginalUrl);
     }
 }
