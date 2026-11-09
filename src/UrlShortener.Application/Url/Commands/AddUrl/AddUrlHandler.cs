@@ -2,16 +2,17 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using UrlShortener.Application.Common.Models;
 using UrlShortener.Application.Services;
 
 namespace UrlShortener.Application.Url.Commands.AddUrl;
 
-public class AddUrlHandler(IUrlService urlService) : IRequestHandler<AddUrlCommand, ShortenedUrl>
+public class AddUrlHandler(IUrlService urlService) : IRequestHandler<AddUrlCommand, Result<ShortenedUrl>>
 {
     private readonly IUrlService _urlService = urlService;
 
-    public Task<ShortenedUrl> Handle(AddUrlCommand request, CancellationToken cancellationToken = default )
+    public async Task<Result<ShortenedUrl>> Handle(AddUrlCommand request, CancellationToken cancellationToken = default )
     {
-       return _urlService.AddUrl(request, cancellationToken);
+       return await _urlService.AddUrl(request, cancellationToken);
     }
 }

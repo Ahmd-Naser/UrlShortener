@@ -1,6 +1,6 @@
 ﻿using MediatR;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using UrlShortener.Api.Extensions;
 using UrlShortener.Application.Url.Commands.AddUrl;
 using UrlShortener.Application.Url.Queries.GetOriginalUrl;
 
@@ -17,7 +17,7 @@ public class UrlsController(ISender sender) : ControllerBase
     {
         var result = await _sender.Send(command);
         // Logic to handle the request and return a response
-        return Ok(result.Url);
+        return Ok(result.Value);
     }
 
     [HttpGet("{shortCode}")]
@@ -25,11 +25,8 @@ public class UrlsController(ISender sender) : ControllerBase
     {
         // Logic to retrieve the original URL based on the short code
         // For example, you might call a service method here
-        var originalUrl = await _sender.Send(new GetOriginalUrlQuery(shortCode));
-        if (originalUrl == null)
-        {
-            return NotFound();
-        }
-        return Ok(originalUrl);
+        var result = await _sender.Send(new GetOriginalUrlQuery(shortCode));
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 }
