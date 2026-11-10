@@ -27,6 +27,6 @@ public class UrlsController(ISender sender) : ControllerBase
         // For example, you might call a service method here
         var result = await _sender.Send(new GetOriginalUrlQuery(shortCode));
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.IsSuccess ? Redirect(result.Value.Url) : result.ToProblem();
     }
 }

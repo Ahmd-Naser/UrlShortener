@@ -27,10 +27,17 @@ public class UrlService(ApplicationDbContext context) : IUrlService
 
         } while(_context.Urls.Any(u => u.ShortenedCode.Equals(shortCode) ) );
 
+        var finalUrl = request.OriginalUrl;
+
+        if(!finalUrl.StartsWith("http://") && !finalUrl.StartsWith("https://"))
+        {
+            finalUrl = "http://" + finalUrl;
+        }
+
         var url = new Url
         {
             ShortenedCode = shortCode,
-            OriginalUrl = request.OriginalUrl,
+            OriginalUrl = finalUrl,
             ExpirationDate = DateTime.UtcNow.AddDays(defaultExpirationDays)
         };
 
