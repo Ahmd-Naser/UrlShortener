@@ -3,6 +3,7 @@ using UrlShortener.Application.Common.Errors;
 using UrlShortener.Application.Common.Models;
 using UrlShortener.Application.Services;
 using UrlShortener.Application.Url.Commands.AddUrl;
+using UrlShortener.Application.Url.Dtos;
 using UrlShortener.Application.Url.Queries.GetOriginalUrl;
 using UrlShortener.Domain.Entities;
 using UrlShortener.Infrastructure.Persistence;
@@ -56,6 +57,27 @@ public class UrlService(ApplicationDbContext context) : IUrlService
             return Result.Failure<OriginalUrlResponse>(UrlErrors.NotFound(request.ShortenedUrl));
 
         return Result.Success( new OriginalUrlResponse(url.OriginalUrl) );
+    }
+
+    public async Task RecordVisitAsync(VisitDetailsDto visitDetails, CancellationToken cancellationToken)
+    {
+        var urlId = await _context.Urls
+            .Where(u => u.ShortenedCode == visitDetails.ShortCode)
+            .Select(u => u.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (urlId == 0) return;
+
+        var visit = new UrlVisit
+        {
+            UrlId = urlId,
+            IpAddress = visitDetails.IpAddress,
+            UserAgent = visitDetails.UserAgent,
+            VisitDate = DateTime.UtcNow
+        };
+
+        await _context.UrlVisits.AddAsync(visit, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
     }
     private string GenerateRandomCode()
     {

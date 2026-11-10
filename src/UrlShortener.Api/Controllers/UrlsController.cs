@@ -2,33 +2,44 @@
 using Microsoft.AspNetCore.Mvc;
 using UrlShortener.Api.Extensions;
 using UrlShortener.Application.Url.Commands.AddUrl;
+using UrlShortener.Application.Url.Events;
 using UrlShortener.Application.Url.Queries.GetOriginalUrl;
 
 namespace UrlShortener.Api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class UrlsController(ISender sender) : ControllerBase
+public class UrlsController(IMediator mediator) : ControllerBase
 {
-    private readonly ISender _sender = sender;
+    private readonly IMediator _mediator = mediator;
 
     [HttpPost]
-    public async Task<IActionResult> AddUrlAsync([FromBody] AddUrlCommand command)
+    public async Task<IActionResult> AddUrlAsync([FromBody] AddUrlCommand command, CancellationToken cancellationToken = default!)
     {
-        var result = await _sender.Send(command);
+        var result = await _mediator.Send(command, cancellationToken);
         // Logic to handle the request and return a response
         return Ok(result.Value);
     }
 
     [HttpGet("{shortCode}")]
-    public async Task<IActionResult> GetOriginalUrlAsync([FromRoute]string shortCode)
+    public async Task<IActionResult> GetOriginalUrlAsync([FromRoute]string shortCode , CancellationToken cancellationToken = default!)
     {
-        // Logic to retrieve the original URL based on the short code
-        // For example, you might call a service method here
-        var result = await _sender.Send(new GetOriginalUrlQuery(shortCode));
+        // 1. إرسال الـ Query عشان نجيب الرابط (من الكاش أو الداتابيز)
+        var query = new GetOriginalUrlQuery(shortCode);
+        var result = await _mediator.Send(query, cancellationToken);
 
-        var redirectUrl = result.IsSuccess ? result.Value.Url : "/not-found.html";
+        if (!result.IsSuccess)
+            return Redirect("/not-found.html");
 
-        return Redirect(redirectUrl);
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        // سحب الـ User-Agent (نوع المتصفح والجهاز)
+        var userAgent = Request.Headers.UserAgent.ToString();
+
+        var visitedEvent = new UrlVisitedEvent(shortCode, ipAddress, userAgent);
+
+        await _mediator.Publish(visitedEvent, cancellationToken);
+
+        return Redirect(result.Value.Url);
     }
 }
