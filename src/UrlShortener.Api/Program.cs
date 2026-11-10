@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 using UrlShortener.Application.Services;
+using UrlShortener.Infrastructure.BackgroundJobs;
 using UrlShortener.Infrastructure.Persistence;
 using UrlShortener.Infrastructure.Services;
 
@@ -26,6 +27,8 @@ builder.Services.AddMemoryCache();
 
 // تسجيل الـ Pipeline Behavior بتاع MediatR
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(UrlShortener.Application.Common.Behaviors.CachingBehavior<,>));
+
+builder.Services.AddHostedService<UrlCleanupService>();
 
 var app = builder.Build();
 
