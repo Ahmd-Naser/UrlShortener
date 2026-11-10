@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 using UrlShortener.Application.Services;
@@ -19,6 +20,12 @@ builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(UrlShortener.Application.Url.Commands.AddUrl.AddUrlCommand).Assembly));
 
 builder.Services.AddControllers();
+
+// تفعيل الـ In-Memory Caching في السيرفر
+builder.Services.AddMemoryCache();
+
+// تسجيل الـ Pipeline Behavior بتاع MediatR
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(UrlShortener.Application.Common.Behaviors.CachingBehavior<,>));
 
 var app = builder.Build();
 
