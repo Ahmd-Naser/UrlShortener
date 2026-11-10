@@ -53,6 +53,49 @@ namespace UrlShortener.Infrastructure.Migrations
 
                     b.ToTable("Urls");
                 });
+
+            modelBuilder.Entity("UrlShortener.Domain.Entities.UrlVisit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UrlId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserAgent")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("VisitDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UrlId");
+
+                    b.ToTable("UrlVisits");
+                });
+
+            modelBuilder.Entity("UrlShortener.Domain.Entities.UrlVisit", b =>
+                {
+                    b.HasOne("UrlShortener.Domain.Entities.Url", "Url")
+                        .WithMany("Visits")
+                        .HasForeignKey("UrlId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Url");
+                });
+
+            modelBuilder.Entity("UrlShortener.Domain.Entities.Url", b =>
+                {
+                    b.Navigation("Visits");
+                });
 #pragma warning restore 612, 618
         }
     }

@@ -10,4 +10,6 @@ public class Url
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? ExpirationDate { get; set; }
+
+    public ICollection<UrlVisit> Visits { get; set; } = [];
 }
