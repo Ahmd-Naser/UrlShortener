@@ -8,8 +8,8 @@ namespace UrlShortener.Application.Common.Errors;
 
 public static class UrlErrors
 {
-    public static Error NotFound(string shortendUrl) =>
-        new Error("Url.NotFound", $"the Url :  \"{shortendUrl}\"  was not found.", (int)HttpStatusCodes.NotFound);
+    public static Error NotFound(string shortenedUrl) =>
+        new Error("Url.NotFound", $"the Url :  '{shortenedUrl}'  was not found.", (int)HttpStatusCodes.NotFound);
 
 
 }
