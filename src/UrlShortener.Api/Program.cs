@@ -24,8 +24,14 @@ builder.Services.AddMediatR(cfg =>
 
 builder.Services.AddControllers();
 
-// تفعيل الـ In-Memory Caching في السيرفر
-builder.Services.AddMemoryCache();
+// إعداد Distributed Redis Cache
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    // لو حاططها في appsettings يفضل تجيبها من هناك، بس للتجربة هنكتبها مباشرة
+    options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    // الـ InstanceName بيحط Prefix قبل أي مفتاح في Redis عشان لو استخدمت نفس السيرفر لمشاريع تانية ميتداخلوش
+    options.InstanceName = "UrlShortener_";
+});
 
 // تسجيل الـ Pipeline Behavior بتاع MediatR
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(UrlShortener.Application.Common.Behaviors.CachingBehavior<,>));

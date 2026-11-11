@@ -1,43 +1,51 @@
-﻿using Microsoft.Extensions.Caching.Memory;
+﻿using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using UrlShortener.Application.Common.Interfaces;
 
 namespace UrlShortener.Application.Common.Behaviors;
 
 public class CachingBehavior<TRequest, TResponse>(
-    IMemoryCache cache,
+    IDistributedCache cache,
     ILogger<CachingBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
+    where TRequest : ICacheableQuery
 {
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
-        // لو الـ Request الحالي مش بيطبق الانترفيس، كمل الـ Pipeline عادي جداً بدون كاش
-        if (request is not ICacheableQuery cacheableQuery)
+        var cacheKey = request.CacheKey;
+
+        // 1. محاولة قراءة الداتا من Redis كنص
+        var cachedData = await cache.GetStringAsync(cacheKey, cancellationToken);
+
+        if (!string.IsNullOrEmpty(cachedData))
         {
-            return await next();
+            logger.LogInformation("Fetched from Redis Cache -> '{CacheKey}'", cacheKey);
+            // تحويل النص لكائن C# تاني
+            return JsonSerializer.Deserialize<TResponse>(cachedData)!;
         }
 
-        // لو الداتا موجودة في الكاش، رجعها علطول (كده وفرنا رحلة للداتابيز!)
-        if (cache.TryGetValue(cacheableQuery.CacheKey, out TResponse? cachedResponse))
-        {
-            logger.LogInformation("Fetched from Cache -> '{CacheKey}'", cacheableQuery.CacheKey);
-            return cachedResponse!;
-        }
+        logger.LogInformation("Redis Cache Miss -> '{CacheKey}'", cacheKey);
 
-        // لو مش موجودة، هنكمل الـ Pipeline عشان نجيبها من الداتابيز
+        // 2. لو مش موجودة، هنكمل للـ Handler عشان يجيبها من الداتابيز
         var response = await next();
 
-        // هنحدد وقت الكاش (ساعة افتراضياً لو مش متحدد)
-        var slidingExpiration = cacheableQuery.Expiration ?? TimeSpan.FromHours(1);
-        var cacheOptions = new MemoryCacheEntryOptions().SetSlidingExpiration(slidingExpiration);
+        if (response != null)
+        {
+            // 3. تحويل الكائن لنص عشان يتخزن في Redis
+            var serializedData = JsonSerializer.Serialize(response);
 
-        // نحفظها في الكاش للمرات الجاية
-        cache.Set(cacheableQuery.CacheKey, response, cacheOptions);
-        logger.LogInformation("Added to Cache -> '{CacheKey}'", cacheableQuery.CacheKey);
+            var options = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = request.Expiration ?? TimeSpan.FromHours(1)
+            };
+
+            await cache.SetStringAsync(cacheKey, serializedData, options, cancellationToken);
+        }
 
         return response;
     }
