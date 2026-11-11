@@ -1,6 +1,8 @@
 using MediatR;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
+using System.Threading.RateLimiting;
 using UrlShortener.Application.Services;
 using UrlShortener.Infrastructure.BackgroundJobs;
 using UrlShortener.Infrastructure.Persistence;
@@ -30,6 +32,30 @@ builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(UrlShortener.
 
 builder.Services.AddHostedService<UrlCleanupService>();
 
+builder.Services.AddRateLimiter(options =>
+{
+    // لو اليوزر اتخطى الحد المسموح بيه، هنرجعله كود 429 Too Many Requests
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // السياسة الأولى: عامة للسيستم كله (100 ريكويست في الدقيقة)
+    options.AddFixedWindowLimiter("GlobalPolicy", opt =>
+    {
+        opt.PermitLimit = 100;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0; // مفيش طابور انتظار، اللي هيتخطى هيترفض فوراً
+    });
+
+    // السياسة التانية: صارمة شوية للـ POST Endpoint عشان نمنع إنشاء روابط وهمية كتير
+    options.AddFixedWindowLimiter("CreateUrlPolicy", opt =>
+    {
+        opt.PermitLimit = 5; // 5 روابط بس
+        opt.Window = TimeSpan.FromMinutes(1); // كل دقيقة
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -38,6 +64,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 
 }
+
+app.UseRateLimiter();
 
 app.UseStaticFiles();
 

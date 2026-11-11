@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using UrlShortener.Api.Extensions;
 using UrlShortener.Application.Url.Commands.AddUrl;
 using UrlShortener.Application.Url.Events;
@@ -9,11 +10,13 @@ namespace UrlShortener.Api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[EnableRateLimiting("GlobalPolicy")]
 public class UrlsController(IMediator mediator) : ControllerBase
 {
     private readonly IMediator _mediator = mediator;
 
     [HttpPost]
+    [EnableRateLimiting("CreateUrlPolicy")]
     public async Task<IActionResult> AddUrlAsync([FromBody] AddUrlCommand command, CancellationToken cancellationToken = default!)
     {
         var result = await _mediator.Send(command, cancellationToken);
