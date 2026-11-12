@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using UrlShortener.Application.Common.Interfaces;
+using UrlShortener.Application.Common.Models;
 
 namespace UrlShortener.Application.Common.Behaviors;
 
@@ -33,6 +34,11 @@ public class CachingBehavior<TRequest, TResponse>(
 
         // 2. لو مش موجودة، هنكمل للـ Handler عشان يجيبها من الداتابيز
         var response = await next();
+
+        if( response is Result result && result.IsFailure )
+        {
+            return response;
+        }
 
         if (response != null)
         {
