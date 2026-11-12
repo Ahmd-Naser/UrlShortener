@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # السيرفر الأول: الـ API بتاعنا
+  api:
+    image: urlshortener-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:8080" # هنقدر نوصله من برا على بورت 5000
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      # السحر هنا: بنغير الـ Connection Strings عشان تشاور على الكونتينرز التانية بدل localhost
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=UrlShortenerDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - ConnectionStrings__Redis=redis:6379
+    depends_on:
+      - sqlserver
+      - redis
+
+  # السيرفر التاني: SQL Server
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Passw0rd
+
+  # السيرفر التالت: Redis
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"

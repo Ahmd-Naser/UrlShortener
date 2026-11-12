@@ -77,6 +77,14 @@ if (app.Environment.IsDevelopment())
 
 }
 
+// تطبيق المايجريشنز أوتوماتيك عند تشغيل السيرفر
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    // ده بيكريت الداتابيز والجداول لو مش موجودين
+    context.Database.Migrate();
+}
+
 app.UseRateLimiter();
 
 app.UseStaticFiles();
