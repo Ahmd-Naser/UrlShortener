@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -14,7 +15,11 @@ public class UrlsControllerTests : IClassFixture<CustomWebApplicationFactory>
     public UrlsControllerTests(CustomWebApplicationFactory factory)
     {
         // بنكريت Client وهمي بيكلم الـ API اللي شغال في الميموري
-        _client = factory.CreateClient();
+        var options = new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        };
+        _client = factory.CreateClient(options);
     }
 
     [Fact]
@@ -44,37 +49,38 @@ public class UrlsControllerTests : IClassFixture<CustomWebApplicationFactory>
 
     }
 
-    //[Fact]
-    //public async Task GetOriginalUrl_AfterCreation_ShouldReturnSuccessfully_AndCacheInRedis()
-    //{
-    //    // 1. Arrange: إنشاء رابط جديد الأول عشان نقدر نطلبه
-    //    // حطيتلك بروفايل الـ LeetCode بتاعك كداتا واقعية
-    //    var originalUrl = "https://leetcode.com/Ahmed-Naser";
-    //    var createResponse = await _client.PostAsJsonAsync("/api/urls", new { OriginalUrl = originalUrl });
+    [Fact]
+    public async Task GetOriginalUrl_AfterCreation_ShouldReturnSuccessfully_AndCacheInRedis()
+    {
+        // 1. Arrange: إنشاء رابط جديد الأول عشان نقدر نطلبه
+        // حطيتلك بروفايل الـ LeetCode بتاعك كداتا واقعية
+        var originalUrl = "https://leetcode.com/u/Ahmed-Naser/";
+        var createResponse = await _client.PostAsJsonAsync("/api/urls", new { OriginalUrl = originalUrl });
 
-    //    // قراءة الرد عشان نطلع الـ ShortCode 
-    //    // (ملحوظة: لو الكلاسات عندك أسمائها مختلفة، استبدل UrlResponseDto باسم الكلاس بتاعك)
-    //    var responseString = await createResponse.Content.ReadAsStringAsync();
-    //    using var document = System.Text.Json.JsonDocument.Parse(responseString);
+        // قراءة الرد عشان نطلع الـ ShortCode 
+        // (ملحوظة: لو الكلاسات عندك أسمائها مختلفة، استبدل UrlResponseDto باسم الكلاس بتاعك)
+        var responseString = await createResponse.Content.ReadAsStringAsync();
+        using var document = System.Text.Json.JsonDocument.Parse(responseString);
 
-    //    // بنفترض إن النتيجة راجعة جوه خاصية اسمها Value وجواها ShortCode
+        // بنفترض إن النتيجة راجعة جوه خاصية اسمها Value وجواها ShortCode
 
-    //    var shortCode = document.RootElement.GetProperty("ShortenedUrl").GetProperty("Url").GetString();
+        var returnedUrl = document.RootElement.GetProperty("url").GetString();
 
-    //    Console.WriteLine($"+++++++++++++++||||||||||||||||||||{responseString}");
+        var actualShortCode = returnedUrl!.Split('/').Last();
 
-    //    // 2. Act: الطلب الأول (هيجيب الداتا من SQL Server ويكيشها في Redis)
-    //    var firstGet = await _client.GetAsync($"/api/urls/{shortCode}");
+        // 2. Act: الطلب الأول (هيجيب الداتا من SQL Server ويكيشها في Redis)
+        var firstGet = await _client.GetAsync($"/api/urls/{actualShortCode}");
 
-    //    // 3. Act: الطلب التاني (هيجيب الداتا من Redis مباشرة بسرعة الصاروخ)
-    //    var secondGet = await _client.GetAsync($"/api/urls/{shortCode}");
+        // 3. Act: الطلب التاني (هيجيب الداتا من Redis مباشرة بسرعة الصاروخ)
+        var secondGet = await _client.GetAsync($"/api/urls/{actualShortCode}");
 
-    //    // 4. Assert: نتأكد إن الطلبين رجعوا نجاح
-    //    firstGet.IsSuccessStatusCode.Should().BeTrue();
-    //    secondGet.IsSuccessStatusCode.Should().BeTrue();
+        // 4. Assert
+        // بما إن الكنترولر بيعمل Redirect، يبقى الرد الصحيح هو 302 Found مش 200 OK
+        firstGet.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        secondGet.StatusCode.Should().Be(HttpStatusCode.Redirect);
 
-    //    // نتأكد إن الـ Redirect أو الرد اللي راجع بيحتوي على الرابط الأصلي
-    //    var content = await secondGet.Content.ReadAsStringAsync();
-    //    content.Should().Contain("leetcode.com");
-    //}
+        // نتأكد إن التوجيه رايح للرابط الصح (اللي هو LeetCode)
+        firstGet.Headers.Location!.ToString()!.Should().Be(originalUrl);
+        secondGet.Headers.Location!.ToString().Should().Be(originalUrl);
+    }
 }
